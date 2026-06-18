@@ -1,59 +1,68 @@
 # Making RL Fine-Tuning Accessible — a working-backwards sketch
 
-*A one-page PR/FAQ written in the Amazon working-backwards style, grounded in the
-friction I hit doing DPO by hand (see the [README](../README.md)). This is a thinking
-artifact, not a real launch.*
+*A one-page thinking artifact, grounded in the friction I hit
+running DPO at two `beta` values (see the [README](..\README.md) and
+[generations](..\results\generations_before_after.md)). *
 
 ---
 
-## Press release (mock)
+##
 
-**Headline:** Teams can now align and customize a foundation model with reinforcement
-learning in an afternoon — no infra tuning, no guesswork.
+**Headline:** Align or customize a foundation model with reinforcement learning in an afternoon — without tuning infrastructure or guessing whether it worked.
 
-**Subhead:** A managed RL fine-tuning workflow that auto-configures training, guides
-the key choices, and tells you whether the model actually got better.
+**Subhead:** A managed RL fine-tuning workflow that auto-configures training for your
+hardware, guides the few choices that matter, and tells you whether the model actually
+got *better* - not just whether a number went up.
 
-**The problem.** Reinforcement learning is now central to how capable models are built
-— aligning to preferences, optimizing reasoning, customizing behavior. But for most
-teams it's out of reach: it demands deep expertise, brittle infrastructure, and days
-of trial and error. The first thing a newcomer hits isn't a research question — it's
-an out-of-memory error. [FILL: tie to your own OOM/version experience]
+**The problem.** RL is now central to how capable models are built - aligning to
+preferences, customizing behavior, optimizing reasoning. But for most teams it's out of
+reach. The first thing a newcomer hits isn't a research question; it's an out-of-memory
+error, then a wall of hyperparameters chosen blind, then a reward curve that looks great
+while the model quietly regressed. I lived all three in a single weekend: default
+settings OOM'd until I hand-tuned batch size, gradient accumulation, sequence length, and
+checkpointing; I picked `beta` from folklore; and my higher-`beta` run posted a *bigger
+reward margin* while producing a confidently wrong answer it hadn't made before.
 
-**The solution.** [FILL: describe the product in 2–3 sentences — e.g., a workflow where
-you pick a base model and a preference dataset, and the system selects a safe training
-configuration for your hardware, surfaces an early-signal run before committing compute,
-and reports a behavior-level evaluation, not just reward curves.]
+**The solution.** A workflow where you pick a base model and a preference dataset, and the
+service (1) selects a safe training configuration for your hardware automatically, (2)
+surfaces a cheap early-signal run and guided defaults before you commit 30+ minutes of
+compute, and (3) reports a **behavior-level evaluation** — side-by-side generations and a
+win-rate on a held-out set — as a first-class output alongside the reward curves.
 
-**Customer quote (imagined).** "[FILL: e.g., 'I went from never having run RL to a
-preference-tuned model the same afternoon — and I could actually tell it improved.']"
+**Customer quote (imagined).** "I went from never having run RL to a tuned model the same afternoon — and for the first time I could actually tell whether it improved, instead of trusting a curve."
 
-**How it works.** [FILL: 3–4 bullets mapping to your friction → opportunity table.]
+**How it works.**
+- Auto-configures memory-bound settings (batch / accumulation / length / checkpointing) from model + GPU.
+- Recommends `beta` / learning rate / LoRA rank with guided defaults and a fast preview run.
+- Runs held-out generation + win-rate evaluation automatically and flags regressions.
+- Versions the whole environment so a working run stays working.
 
-**Availability.** [FILL]
+**Availability.** Concept only - this repo is the customer-discovery work behind it.
 
 ---
 
-## FAQ
+## 
 
 **Why is this hard today?**
-[FILL: summarize the four friction points from your README — memory/config, blind
-hyperparameters, version fragility, no behavior-level eval — in your own words.]
+Four recurring walls, all of which I hit by hand: (1) **memory** - defaults don't fit
+real GPUs and the fixes aren't discoverable; (2) **blind hyperparameters** - no feedback
+until a full run finishes; (3) **version fragility** - pinned TRL/transformers/peft, with
+silent breakage otherwise; (4) **evaluation ambiguity** - the trainer reports reward
+curves, but nothing tells you the model got *worse* on factuality.
 
 **Who is this for?**
-[FILL: e.g., ML teams that want to customize a model's behavior but don't have a
-dedicated RL infra team — from startups to enterprise app teams.]
+ML and applied teams that want to customize a model's behavior but don't have a dedicated
+RL-infrastructure group - from startups to enterprise application teams.
 
 **How would we measure success?**
-[FILL: e.g., time-to-first-successful-run; share of runs that converge without manual
-config; adoption / repeat usage; not just whether a job completes.]
+Time-to-first-successful-run; share of runs that converge without manual config; share of runs where a regression is caught *before* the model is shipped; repeat usage. Notably *not* "did the job complete" - completion is the low bar that hides the real failures.
 
-**What would you NOT build / what are the risks?**
-[FILL — shows judgment: e.g., over-automating hyperparameters can hide the tradeoffs
-that matter; pushing alignment too hard (low beta) degrades the base model; the eval
-has to reflect real behavior, or you've automated a false sense of progress.]
+**What would you NOT build, and what are the risks?**
+Don't over-automate the choices that carry real trade-offs — `beta` is the clearest
+example: in my runs, a higher value produced a larger (partly mechanical) reward margin
+but a *worse* model, so a system that silently "optimizes the margin" would ship
+regressions. And the evaluation has to reflect real behavior; automating a reward curve
+without behavior-level checks just automates a false sense of progress.
 
 **What did doing this by hand teach you that a spec wouldn't?**
-[FILL: your most honest takeaway — e.g., the gap between "the reward curve went up" and
-"the product is better" is the whole game, and tooling that only shows reward curves
-quietly lets customers ship worse models.]
+That the gap between "the reward curve went up" and "the product is better" is the entire game. My stronger-looking run was the weaker model, and the only thing that revealed it was reading the outputs. Tooling that surfaces only reward curves doesn't just omit a feature — it quietly lets customers ship worse models believing they improved.

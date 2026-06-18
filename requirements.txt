@@ -1,0 +1,4 @@
+transformers==4.56.2
+trl==1.6.0
+peft==0.19.1
+datasets accelerate matplotlib
